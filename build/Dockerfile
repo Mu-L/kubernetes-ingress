@@ -1,5 +1,4 @@
 # syntax=docker/dockerfile:1.0-experimental
-ARG GOLANG_CONTAINER=golang:1.15-alpine
 ARG NGINX_VERSION=1.19.7
 ARG BUILD_OS=debian
 
@@ -283,7 +282,7 @@ ENTRYPOINT ["/nginx-ingress"]
 
 
 ############################################# Build nginx-ingress in golang container #############################################
-FROM $GOLANG_CONTAINER AS builder
+FROM golang:1.15-alpine AS builder
 ARG VERSION
 ARG GIT_COMMIT
 WORKDIR /go/src/github.com/nginxinc/kubernetes-ingress/nginx-ingress/cmd/nginx-ingress
