@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -130,13 +131,15 @@ func TestGenerateTransportServerConfigForTCP(t *testing.T) {
 			ProxyNextUpstreamTries:   0,
 			ProxyNextUpstreamTimeout: "0s",
 			ProxyTimeout:             "50s",
-			HealthCheck:              false,
-			HCTimeout:                "5s",
-			HCJitter:                 "0",
-			HCPort:                   0,
-			HCInterval:               "5s",
-			HCPasses:                 1,
-			HCFails:                  1,
+			HealthCheck: &version2.StreamHealthCheck{
+				Enabled:  false,
+				Timeout:  "5s",
+				Jitter:   "0",
+				Port:     0,
+				Interval: "5s",
+				Passes:   1,
+				Fails:    1,
+			},
 		},
 	}
 
@@ -218,13 +221,15 @@ func TestGenerateTransportServerConfigForTLSPasstrhough(t *testing.T) {
 			ProxyNextUpstreamTimeout: "0s",
 			ProxyNextUpstreamTries:   0,
 			ProxyTimeout:             "10m",
-			HealthCheck:              false,
-			HCTimeout:                "5s",
-			HCJitter:                 "0",
-			HCPort:                   0,
-			HCInterval:               "5s",
-			HCPasses:                 1,
-			HCFails:                  1,
+			HealthCheck: &version2.StreamHealthCheck{
+				Enabled:  false,
+				Timeout:  "5s",
+				Jitter:   "0",
+				Port:     0,
+				Interval: "5s",
+				Passes:   1,
+				Fails:    1,
+			},
 		},
 	}
 
@@ -252,18 +257,10 @@ func TestGenerateTransportServerConfigForUDP(t *testing.T) {
 				},
 				Upstreams: []conf_v1alpha1.Upstream{
 					{
-						Name:    "udp-app",
-						Service: "udp-app-svc",
-						Port:    5001,
-						HealthCheck: &conf_v1alpha1.HealthCheck{
-							Enabled:  true,
-							Timeout:  "10s",
-							Jitter:   "4",
-							Port:     90,
-							Interval: "8s",
-							Passes:   3,
-							Fails:    6,
-						},
+						Name:        "udp-app",
+						Service:     "udp-app-svc",
+						Port:        5001,
+						HealthCheck: &conf_v1alpha1.HealthCheck{},
 					},
 				},
 				UpstreamParameters: &conf_v1alpha1.UpstreamParameters{
@@ -319,13 +316,15 @@ func TestGenerateTransportServerConfigForUDP(t *testing.T) {
 			ProxyNextUpstreamTimeout: "0s",
 			ProxyNextUpstreamTries:   0,
 			ProxyTimeout:             "10m",
-			HealthCheck:              true,
-			HCTimeout:                "10s",
-			HCJitter:                 "4",
-			HCPort:                   90,
-			HCInterval:               "8s",
-			HCPasses:                 3,
-			HCFails:                  6,
+			HealthCheck: &version2.StreamHealthCheck{
+				Enabled:  false,
+				Timeout:  "5s",
+				Jitter:   "0",
+				Port:     0,
+				Interval: "5s",
+				Passes:   1,
+				Fails:    1,
+			},
 		},
 	}
 
@@ -364,5 +363,91 @@ func TestGenerateUnixSocket(t *testing.T) {
 	result = generateUnixSocket(transportServerEx)
 	if result != expected {
 		t.Errorf("generateUnixSocket() returned %q but expected %q", result, expected)
+	}
+}
+
+func TestGenerateTransportServerHealthChecks(t *testing.T) {
+	tests := []struct {
+		healthCheck *conf_v1alpha1.HealthCheck
+		expected    *version2.StreamHealthCheck
+	}{
+		{
+			healthCheck: &conf_v1alpha1.HealthCheck{
+				Enabled:  false,
+				Timeout:  "30s",
+				Jitter:   "30s",
+				Port:     80,
+				Interval: "20s",
+				Passes:   4,
+				Fails:    5,
+			},
+			expected: &version2.StreamHealthCheck{
+				Enabled:  false,
+				Timeout:  "5s",
+				Jitter:   "0",
+				Port:     0,
+				Interval: "5s",
+				Passes:   1,
+				Fails:    1,
+			},
+		},
+		{
+			healthCheck: &conf_v1alpha1.HealthCheck{},
+			expected: &version2.StreamHealthCheck{
+				Enabled:  false,
+				Timeout:  "5s",
+				Jitter:   "0",
+				Port:     0,
+				Interval: "5s",
+				Passes:   1,
+				Fails:    1,
+			},
+		},
+		{
+			healthCheck: &conf_v1alpha1.HealthCheck{
+				Enabled:  true,
+				Timeout:  "30s",
+				Jitter:   "30s",
+				Port:     80,
+				Interval: "20s",
+				Passes:   4,
+				Fails:    5,
+			},
+			expected: &version2.StreamHealthCheck{
+				Enabled:  true,
+				Timeout:  "30s",
+				Jitter:   "30s",
+				Port:     80,
+				Interval: "20s",
+				Passes:   4,
+				Fails:    5,
+			},
+		},
+		{
+			healthCheck: &conf_v1alpha1.HealthCheck{
+				Enabled: true,
+				Timeout: "30s",
+				Jitter:  "30s",
+				Port:    80,
+			},
+			expected: &version2.StreamHealthCheck{
+				Enabled:  true,
+				Timeout:  "30s",
+				Jitter:   "30s",
+				Port:     80,
+				Interval: "5s",
+				Passes:   1,
+				Fails:    1,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		result := generateTransportServerHealthCheck(test.healthCheck)
+		if !reflect.DeepEqual(result, test.expected) {
+			fmt.Printf("Input : %+v\n", test.healthCheck)
+			fmt.Printf("Result : %+v\n", result)
+			t.Errorf("generateTransportServerHealthCheck() returned %v but expected %v", result, test.expected)
+		}
 	}
 }

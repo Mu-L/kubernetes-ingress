@@ -14,6 +14,7 @@ This document is the reference documentation for the TransportServer resource. T
   - [TransportServer Specification](#transportserver-specification)
     - [Listener](#listener)
     - [Upstream](#upstream)
+      - [Health Checks](#upstream-healthchecks)
     - [UpstreamParameters](#upstreamparameters)
     - [SessionParameters](#sessionparameters)
     - [Action](#action)
@@ -181,7 +182,6 @@ port: 8443
      - Yes
 ```
 
-
 ### Upstream.Healthcheck
 
 The Healthcheck defines an [active health check](https://nginx.org/en/docs/stream/ngx_stream_upstream_hc_module.html?#health_check). In the example below we enable a health check for an upstream and configure all the available parameters:
@@ -218,7 +218,7 @@ healthCheck:
      - ``string``
      - No
    * - ``timeout``
-     - This overrides the timeout set by `proxy_timeout <http://nginx.org/en/docs/stream/ngx_stream_proxy_module.html#proxy_timeout>`_ which is set in [SessionParameters](#sessionparameters) for health checks. The default value is ``5s``.
+     - This overrides the timeout set by `proxy_timeout <http://nginx.org/en/docs/stream/ngx_stream_proxy_module.html#proxy_timeout>`_ which is set in `SessionParameters` for health checks. The default value is ``5s``.
      - ``string``
      - No
    * - ``jitter``
