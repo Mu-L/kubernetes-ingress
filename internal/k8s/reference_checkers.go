@@ -1,6 +1,8 @@
 package k8s
 
 import (
+	"strings"
+
 	"github.com/nginxinc/kubernetes-ingress/internal/configs"
 	v1 "github.com/nginxinc/kubernetes-ingress/pkg/apis/configuration/v1"
 	conf_v1alpha1 "github.com/nginxinc/kubernetes-ingress/pkg/apis/configuration/v1alpha1"
@@ -81,10 +83,12 @@ func (rc *secretReferenceChecker) IsReferencedByTransportServer(secretNamespace 
 	return false
 }
 
-type serviceReferenceChecker struct{}
+type serviceReferenceChecker struct {
+	hasClusterIP bool
+}
 
-func newServiceReferenceChecker() *serviceReferenceChecker {
-	return &serviceReferenceChecker{}
+func newServiceReferenceChecker(hasClusterIP bool) *serviceReferenceChecker {
+	return &serviceReferenceChecker{hasClusterIP}
 }
 
 func (rc *serviceReferenceChecker) IsReferencedByIngress(svcNamespace string, svcName string, ing *networking.Ingress) bool {
@@ -121,6 +125,9 @@ func (rc *serviceReferenceChecker) IsReferencedByVirtualServer(svcNamespace stri
 	}
 
 	for _, u := range vs.Spec.Upstreams {
+		if rc.hasClusterIP && u.UseClusterIP {
+			continue
+		}
 		if u.Service == svcName {
 			return true
 		}
@@ -135,6 +142,9 @@ func (rc *serviceReferenceChecker) IsReferencedByVirtualServerRoute(svcNamespace
 	}
 
 	for _, u := range vsr.Spec.Upstreams {
+		if rc.hasClusterIP && u.UseClusterIP {
+			continue
+		}
 		if u.Service == svcName {
 			return true
 		}
@@ -157,8 +167,7 @@ func (rc *serviceReferenceChecker) IsReferencedByTransportServer(svcNamespace st
 	return false
 }
 
-type policyReferenceChecker struct {
-}
+type policyReferenceChecker struct{}
 
 func newPolicyReferenceChecker() *policyReferenceChecker {
 	return &policyReferenceChecker{}
@@ -210,10 +219,14 @@ func newAppProtectResourceReferenceChecker(annotation string) *appProtectResourc
 	return &appProtectResourceReferenceChecker{annotation}
 }
 
+// In App Protect logConfs can be a coma separated list.
 func (rc *appProtectResourceReferenceChecker) IsReferencedByIngress(namespace string, name string, ing *networking.Ingress) bool {
-	if pol, exists := ing.Annotations[rc.annotation]; exists {
-		if pol == namespace+"/"+name || (namespace == ing.Namespace && pol == name) {
-			return true
+	if resName, exists := ing.Annotations[rc.annotation]; exists {
+		resNames := strings.Split(resName, ",")
+		for _, res := range resNames {
+			if res == namespace+"/"+name || (namespace == ing.Namespace && res == name) {
+				return true
+			}
 		}
 	}
 	return false
